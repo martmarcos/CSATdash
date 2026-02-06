@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LawnStarter CSAT Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #065f46 0%, #0f766e 50%, #047857 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(17, 24, 39, 0.95);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .header {
+            background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .upload-section {
+            background: rgba(31, 41, 55, 0.6);
+            padding: 20px;
+            margin: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .upload-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background: rgba(31, 41, 55, 0.5);
+        }
+        .stat-card {
+            background: rgba(17, 24, 39, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .stat-label {
+            color: #10b981;
+            font-size: 0.75em;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: white;
+        }
+        .stat-value.good { color: #10b981; }
+        .stat-value.bad { color: #ef4444; }
+        .charts-section {
+            padding: 20px;
+            background: rgba(31, 41, 55, 0.3);
+        }
+        .chart-container {
+            background: rgba(17, 24, 39, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .chart-title {
+            color: #10b981;
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px;
+        }
+        th {
+            background: #059669;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 0.85em;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+            color: white;
+        }
+        tr:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .badge-good {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        .badge-bad {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        .ticket-link {
+            color: #10b981;
+            text-decoration: none;
+            font-weight: 600;
+            font-family: monospace;
+        }
+        .ticket-link:hover {
+            text-decoration: underline;
+            color: #34d399;
+        }
+        .status-msg {
+            padding: 12px;
+            margin: 10px 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+        .status-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+        .status-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌿 LawnStarter</h1>
+            <p>Customer Satisfaction Intelligence System</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-controls">
+                <span style="color: #10b981; font-weight: 600;">📁 Dataset: <span id="fileName">Default Dataset</span></span>
+                <input type="file" id="csvFile" accept=".csv" style="display:none;">
+                <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">📤 Upload CSV</button>
+                <button class="btn btn-primary" onclick="resetData()">🔄 Reset</button>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Surveys</div>
+                <div class="stat-value" id="statTotal">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Positive Feedback</div>
+                <div class="stat-value good" id="statGood">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Negative Feedback</div>
+                <div class="stat-value bad" id="statBad">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Satisfaction Rate</div>
+                <div class="stat-value" id="statRate">0%</div>
+            </div>
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-container">
+                <div class="chart-title">Agent Performance</div>
+                <canvas id="agentChart" height="80"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Score Distribution</div>
+                <canvas id="scoreChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <div style="padding: 20px; background: rgba(31, 41, 55, 0.5);">
+            <div style="color: #10b981; font-size: 1.2em; font-weight: 700; margin-bottom: 15px; text-transform: uppercase;">📋 Survey Records</div>
+            <div style="overflow-x: auto; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Agent</th>
+                            <th>Score</th>
+                            <th>Ticket ID</th>
+                            <th>Customer</th>
+                            <th>Comment</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default data
+        let data = [
+            {"agent_name":"Abby Payad","current_role":"Tier III Email","survey_date":"2026-01-17T07:05:07","score":"good","comment":"Not answered","customer_name":"James Blakney","ticket_id":"14192062","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14192062","custom_category":"customer__service_help__service_quality_or_completion_problem"},
+            {"agent_name":"Abby Payad","current_role":"Tier III Email","survey_date":"2026-01-13T21:17:54","score":"good","comment":"Not answered","customer_name":"Cynthia Tarin","ticket_id":"14189689","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14189689","custom_category":"customer__start_stop_services__start_service"},
+            {"agent_name":"Abby Payad","current_role":"Tier III Email","survey_date":"2026-01-13T15:00:20","score":"bad","comment":"Not answered","customer_name":"Samantha Boyd","ticket_id":"14191225","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14191225","custom_category":"pro__service_help__service_help"},
+            {"agent_name":"Keith Maicon","current_role":"Tier III Phone","survey_date":"2026-01-16T03:11:51","score":"good","comment":"Not answered","customer_name":"Sandra Foster","ticket_id":"14194049","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14194049","custom_category":"customer__billing_charges_payments__payment_pricing_problem"},
+            {"agent_name":"Keith Maicon","current_role":"Tier III Phone","survey_date":"2026-01-12T19:29:40","score":"bad","comment":"Y'all are no help","customer_name":"Charles Wolfe","ticket_id":"14190432","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14190432","custom_category":"pro__scheduling__scheduling_problem"},
+            {"agent_name":"Monica Guevarra","current_role":"Tier III Phone","survey_date":"2026-01-15T06:17:34","score":"good","comment":"Not answered","customer_name":"Erick Mendez","ticket_id":"14193223","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14193223","custom_category":"pro__service_help__service_help"},
+            {"agent_name":"Sol Pantinople","current_role":"Tier III Chat","survey_date":"2026-01-15T17:04:00","score":"good","comment":"Great support","customer_name":"David Opara","ticket_id":"14193565","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14193565","custom_category":"pro__billing_payouts_fees_banking__payouts_fees"}
+        ];
+
+        let charts = {};
+
+        // Parse CSV - handles multiline fields with quotes
+        function parseCSV(text) {
+            const records = [];
+            const rows = [];
+            let currentRow = [];
+            let currentField = '';
+            let insideQuotes = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+                
+                if (char === '"') {
+                    if (insideQuotes && nextChar === '"') {
+                        currentField += '"';
+                        i++;
+                    } else {
+                        insideQuotes = !insideQuotes;
+                    }
+                } else if (char === ',' && !insideQuotes) {
+                    currentRow.push(currentField);
+                    currentField = '';
+                } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+                    if (char === '\r' && nextChar === '\n') i++;
+                    currentRow.push(currentField);
+                    if (currentRow.some(field => field.trim() !== '')) {
+                        rows.push(currentRow);
+                    }
+                    currentRow = [];
+                    currentField = '';
+                } else {
+                    currentField += char;
+                }
+            }
+            
+            if (currentField || currentRow.length > 0) {
+                currentRow.push(currentField);
+                if (currentRow.some(field => field.trim() !== '')) {
+                    rows.push(currentRow);
+                }
+            }
+            
+            if (rows.length === 0) return [];
+            
+            const headers = rows[0].map(h => h.trim());
+            
+            for (let i = 1; i < rows.length; i++) {
+                if (rows[i].length === headers.length) {
+                    const record = {};
+                    headers.forEach((header, idx) => {
+                        record[header] = rows[i][idx] ? rows[i][idx].trim() : '';
+                    });
+                    records.push(record);
+                }
+            }
+            
+            console.log('Parsed', records.length, 'records');
+            return records;
+        }
+
+        // Show status
+        function showStatus(msg, type) {
+            const el = document.getElementById('statusMsg');
+            el.textContent = msg;
+            el.className = 'status-msg status-' + type;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        // Reset data
+        function resetData() {
+            data = [
+                {"agent_name":"Abby Payad","current_role":"Tier III Email","survey_date":"2026-01-17T07:05:07","score":"good","comment":"Not answered","customer_name":"James Blakney","ticket_id":"14192062","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14192062","custom_category":"customer__service_help__service_quality_or_completion_problem"},
+                {"agent_name":"Keith Maicon","current_role":"Tier III Phone","survey_date":"2026-01-12T19:29:40","score":"bad","comment":"Y'all are no help","customer_name":"Charles Wolfe","ticket_id":"14190432","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14190432","custom_category":"pro__scheduling__scheduling_problem"},
+                {"agent_name":"Sol Pantinople","current_role":"Tier III Chat","survey_date":"2026-01-15T17:04:00","score":"good","comment":"Great support","customer_name":"David Opara","ticket_id":"14193565","ticket_link":"https://lawnstarter1.zendesk.com/agent/tickets/14193565","custom_category":"pro__billing_payouts_fees_banking__payouts_fees"}
+            ];
+            document.getElementById('fileName').textContent = 'Default Dataset';
+            document.getElementById('csvFile').value = '';
+            showStatus('✅ Reset to default dataset', 'success');
+            render();
+        }
+
+        // Render everything
+        function render() {
+            // Stats
+            const total = data.length;
+            const good = data.filter(d => d.score === 'good').length;
+            const bad = data.filter(d => d.score === 'bad').length;
+            const rate = total > 0 ? ((good/total)*100).toFixed(1) : 0;
+            
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statGood').textContent = good;
+            document.getElementById('statBad').textContent = bad;
+            document.getElementById('statRate').textContent = rate + '%';
+            document.getElementById('statRate').className = 'stat-value ' + (rate >= 75 ? 'good' : 'bad');
+
+            // Table
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = data.slice(0, 50).map(d => `
+                <tr>
+                    <td>${new Date(d.survey_date).toLocaleDateString()}</td>
+                    <td>${d.agent_name}</td>
+                    <td><span class="badge badge-${d.score}">${d.score === 'good' ? '✅' : '❌'} ${d.score}</span></td>
+                    <td>
+                        ${d.ticket_link ? 
+                            `<a href="${d.ticket_link}" target="_blank" class="ticket-link">#${d.ticket_id}</a>` : 
+                            `<span style="color: #6b7280;">#${d.ticket_id || 'N/A'}</span>`
+                        }
+                    </td>
+                    <td>${d.customer_name}</td>
+                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.comment}</td>
+                </tr>
+            `).join('');
+
+            // Charts
+            renderCharts();
+        }
+
+        // Render charts
+        function renderCharts() {
+            // Destroy existing
+            Object.values(charts).forEach(c => c.destroy());
+            
+            // Agent chart
+            const agents = {};
+            data.forEach(d => {
+                if (!agents[d.agent_name]) agents[d.agent_name] = {good: 0, bad: 0};
+                agents[d.agent_name][d.score]++;
+            });
+            
+            const agentCanvas = document.getElementById('agentChart');
+            charts.agent = new Chart(agentCanvas, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(agents),
+                    datasets: [{
+                        label: 'Good',
+                        data: Object.values(agents).map(a => a.good),
+                        backgroundColor: '#10b981'
+                    }, {
+                        label: 'Bad',
+                        data: Object.values(agents).map(a => a.bad),
+                        backgroundColor: '#ef4444'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    }
+                }
+            });
+
+            // Score chart
+            const good = data.filter(d => d.score === 'good').length;
+            const bad = data.filter(d => d.score === 'bad').length;
+            
+            const scoreCanvas = document.getElementById('scoreChart');
+            charts.score = new Chart(scoreCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Good', 'Bad'],
+                    datasets: [{
+                        data: [good, bad],
+                        backgroundColor: ['#10b981', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+        }
+
+        // File upload
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            console.log('File selected:', file.name);
+            
+            if (!file.name.endsWith('.csv')) {
+                showStatus('❌ Please upload a CSV file', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                console.log('File loaded, parsing...');
+                try {
+                    const parsed = parseCSV(event.target.result);
+                    console.log('Parsed records:', parsed.length);
+                    
+                    if (parsed.length === 0) {
+                        showStatus('❌ No data found in CSV', 'error');
+                        return;
+                    }
+                    
+                    data = parsed;
+                    document.getElementById('fileName').textContent = file.name;
+                    showStatus('✅ Loaded ' + parsed.length + ' records', 'success');
+                    render();
+                } catch (err) {
+                    console.error('Parse error:', err);
+                    showStatus('❌ Error parsing CSV: ' + err.message, 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                console.error('File read error');
+                showStatus('❌ Error reading file', 'error');
+            };
+            
+            reader.readAsText(file);
+        });
+
+        // Initial render
+        render();
+        console.log('Dashboard ready');
+    </script>
+</body>
+</html>
